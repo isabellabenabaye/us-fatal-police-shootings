@@ -14,15 +14,25 @@ states <- bind_cols(datasets::state.name, datasets::state.abb) %>%
   rename(state_name = "...1",
          state = "...2")
 
-# main table
-state_table <- fatal_police_shootings %>%
+# get percents
+state_data <- fatal_police_shootings %>%
   left_join(states) %>%
   count(state_name, race) %>%
   ## make a column for each race
   pivot_wider(id_cols = state_name, names_from = race, values_from = n, values_fill = 0) %>%
   rename(unknown = `NA`) %>%
-  mutate(total = A + B + N + W + unknown + H + O) %>%
-  select(state_name, total, W, B, H, A, N, O, unknown)
+  mutate(total = A + B + N + W + unknown + H + O,
+         W_perc = W/total *100,
+         B_perc = B/total *100,
+         H_perc = H/total *100,
+         A_perc = A/total *100,
+         N_perc = N/total *100,
+         O_perc = O/total *100,
+         unknown_perc = unknown/total *100)
+
+# main table
+state_table <- state_data %>%
+  select(state_name, total, W, H, B, A, N, O, unknown)
 
 # palette
 red_pal <- function(x) rgb(colorRamp(c("#ffeef1", "#f87274"), bias = 2)(x), maxColorValue = 255)
@@ -50,19 +60,19 @@ race_column <- function(col, class = NULL, ...){
 race_cols <- c("W", "B", "H", "A", "N", "O", "unknown")
 
 # bar chart
-library(htmltools)
-bar_chart <- function(label, width = "100%", height = "18px", fill = "#118AB2", background = NULL) {
+bar_chart <- function(label, width = "100%", height = "18px", fill = "#3fc1c9", background = NULL) {
   bar <- div(style = list(background = fill, width = width, height = height))
   chart <- div(style = list(flexGrow = 1, marginLeft = "6px", background = background), bar)
   div(style = list(display = "flex", alignItems = "center"), label, chart)
 }
 
 # reactable table
-reactable(
+final_table_states <- reactable(
   data = state_table,
-  style = list(fontFamily = "Work Sans, sans-serif", fontSize = "16px"),
+  style = list(fontFamily = "Work Sans, sans-serif", fontSize = "14px"),
   defaultSorted = "total",
-  defaultPageSize = 25,
+  defaultPageSize = 15,
+  defaultColDef = colDef(class = "cell", headerClass = "header"),
   highlight = TRUE,
   searchable = TRUE,
   compact = TRUE,
@@ -71,21 +81,22 @@ reactable(
   ),
   columns = list(
     state_name = colDef(name = "State",
-                        minWidth = 120),
+                        minWidth = 140,
+                        style = list(fontWeight = 500)),
     total = colDef(
       name = "Number of killings",
       defaultSortOrder = "desc",
-      minWidth = 200,
+      minWidth = 160,
       cell = function(value) {
         width <- paste0(value * 100 / max(state_table$total), "%")
         value <- format(value, big.mark = ",")
         # Fix each label using the width of the widest number (incl. thousands separators)
         value <- format(value, width = 4, justify = "right")
-        bar_chart(value, width = width, fill = "#3fc1c9")
+        bar_chart(value, width = width)
       },
       # And left-align the columns
       align = "left",
-      style = list(fontFamily = "monospace", whiteSpace = "pre")
+      style = list(fontFamily = "DM Mono", whiteSpace = "pre")
     ),
     W = race_column(name = "White", col = "W"),
     B = race_column(name = "Black", col = "B"),
@@ -96,24 +107,40 @@ reactable(
     unknown = race_column(name = "Unknown", col = "unknown")
   )
 )
+final_table_states
 
-
-# Cities table -----
+# Cities table (percents)-----
 # city counts pre-pivot - used for cell shading
 city_counts <- fatal_police_shootings %>%
   mutate(city = paste0(city,", ",state)) %>%
   count(city, race, sort = TRUE)
 
 # main table
-city_table <- fatal_police_shootings %>%
+city_data <- fatal_police_shootings %>%
   mutate(city = paste0(city,", ",state)) %>%
   count(city, race) %>%
   ## make a column for each race
   pivot_wider(id_cols = city, names_from = race, values_from = n, values_fill = 0) %>%
   rename(unknown = `NA`) %>%
-  mutate(total = A + B + N + W + unknown + H + O) %>%
-  select(city, total, W, B, H, A, N, O, unknown) %>%
+  mutate(total = A + B + N + W + unknown + H + O,
+         W = W/total *100,
+         B = B/total *100,
+         H = H/total *100,
+         A = A/total *100,
+         N = N/total *100,
+         O = O/total *100,
+         unknown = unknown/total *100,)
+city_table <- city_data %>%
+  select(city, total, W, H, B, A, N, O, unknown) %>%
   filter(total >= 10)
+
+
+format_pct <- function(value) {
+  if (value == 0) "  \u2013 "    # en dash for 0%
+  else if (value < 1) " <1%"
+  else if (value > 99) ">99%"
+  else formatC(paste0(round(value), "%"), width = 4)
+}
 
 # race column
 race_column <- function(col, class = NULL, ...){
@@ -121,9 +148,10 @@ race_column <- function(col, class = NULL, ...){
     ...,
     maxWidth = 80,
     defaultSortOrder = "desc",
+    cell = format_pct,
     headerStyle = list(fontSize = "13px", fontWeight = 400),
     style = function(value) {
-      normalized <- (value - min(city_counts[-1:-2,"n"])) / (max(city_counts[-1:-2,"n"]) - min(city_counts[-1:-2,"n"]))
+      normalized <- (value/100)
       if (value < 1) {
         list(color = "#aaa")
       } else if (normalized > 0.99) {
@@ -134,6 +162,7 @@ race_column <- function(col, class = NULL, ...){
     }
   )
 }
+
 
 # reactable table
 final_table_cities <- reactable(
