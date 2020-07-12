@@ -5,5 +5,5 @@ Interactive tables can be found in my blog post: https://isabella-b.com/blog/us-
 
 Screenshots of the tables:
 ![](https://pbs.twimg.com/media/Ebjl1giUYAE8b7I?format=png&name=900x900)
-![](https://pbs.twimg.com/media/Ebjl1giUYAE8b7I?format=png&name=900x900)
-![](https://pbs.twimg.com/media/Ebjl1giUYAE8b7I?format=png&name=900x900)
+![](https://pbs.twimg.com/media/Ebjl2XjU0AAu263?format=png&name=900x900)
+![](https://pbs.twimg.com/media/Ebjl3LmUEAIxAN1?format=png&name=900x900)
